@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512"
+  aria-labelledby="title desc" role="img">
+  <title id="title">Screen Lamp Icon</title>
+  <desc id="desc">Smartphone with glowing screen emitting light - turns your phone into a colored
+    lamp</desc>
+
+  <defs>
+    <!-- Glow filter -->
+    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="18" result="blur" />
+      <feFlood flood-color="#FFEE58" flood-opacity="0.85" />
+      <feComposite in="flood" in2="blur" operator="in" />
+      <feMerge>
+        <feMergeNode />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+
+    <!-- Subtle highlight on screen -->
+    <radialGradient id="screenGrad" cx="45%" cy="40%" r="80%" fx="40%" fy="35%">
+      <stop offset="0%" stop-color="#FFFFFF" stop-opacity="0.45" />
+      <stop offset="100%" stop-color="#FFEE58" stop-opacity="1" />
+    </radialGradient>
+  </defs>
+
+  <!-- Phone body -->
+  <rect x="128" y="48" width="256" height="416" rx="48" ry="48" fill="#1F1F1F" stroke="#2A2A2A"
+    stroke-width="32" />
+
+  <!-- Screen -->
+  <rect x="160" y="112" width="192" height="320" rx="14" ry="14" fill="url(#screenGrad)"
+    filter="url(#glow)" />
+
+  <!-- Home indicator -->
+  <rect x="208" y="402" width="96" height="7" rx="3.5" ry="3.5" fill="#111111" />
+
+  <!-- Light rays (subtle, emanating from screen) -->
+  <g opacity="0.25" fill="none" stroke="#FFEE58" stroke-width="14" stroke-linecap="round">
+    <!-- Top rays -->
+    <line x1="256" y1="200" x2="256" y2="40" />
+    <line x1="210" y1="170" x2="140" y2="60" />
+    <line x1="302" y1="170" x2="372" y2="60" />
+    <!-- Side rays -->
+    <line x1="170" y1="260" x2="60" y2="260" />
+    <line x1="342" y1="260" x2="452" y2="260" />
+    <!-- Bottom rays -->
+    <line x1="210" y1="340" x2="140" y2="430" />
+    <line x1="302" y1="340" x2="372" y2="430" />
+  </g>
+</svg>
