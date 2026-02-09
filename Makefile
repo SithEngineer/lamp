@@ -1,4 +1,4 @@
-.PHONY: help install lint format test test-watch coverage build-debug build-release build-android build-ios run run-release clean analyze
+.PHONY: help install lint format test test-watch coverage build-debug build-release build-android build-ios run run-release clean analyze screenshot
 
 help:
 	@echo "Lamp - Flutter Mobile App Development Commands"
@@ -30,9 +30,9 @@ help:
 	@echo "Icons & Assets:"
 	@echo "  make gen-icons        - Regenerate app launcher icons"
 	@echo ""
-
-install:
-	flutter pub get
+	@echo "Device:"
+	@echo "  make screenshot       - Take a device screenshot (timestamped)"
+	@echo ""
 
 clean:
 	flutter clean
@@ -85,6 +85,13 @@ gen-icons-config:
 	
 gen-icons:
 	dart run flutter_launcher_icons
+	
+install:
+	flutter pub get
+
+screenshot:
+	@adb exec-out screencap -p > screenshot_$$(date +%Y%m%d_%H%M%S).png
+	@echo "Screenshot saved: screenshot_$$(date +%Y%m%d_%H%M%S).png"
 
 # CI/CD targets (for GitHub Actions and local CI runs)
 .PHONY: ci-setup ci-lint ci-test ci-build-android ci-build-ios
