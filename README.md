@@ -7,6 +7,7 @@ A Flutter mobile application that transforms your phone screen into a customizab
 - 🎨 **12 Predefined Colors** - Red, Purple, Teal, Green, Blue, Orange, Amber, Yellow, White, Grey, Indigo, Black
 - 👆 **Tap to Select** - Tap color chips at the bottom to jump directly to a color
 - 👈👉 **Swipe to Navigate** - Swipe left/right to cycle through colors with smooth animations
+- 👆👇 **Vertical Swipe for Brightness** - Swipe up/down to adjust brightness in 0.25 increments
 - ✨ **Smooth Transitions** - 300ms animated color transitions for a polished feel
 - 📱 **Mobile First** - Optimized for Android and iOS platforms
 
@@ -106,21 +107,40 @@ The linting step runs automatically before builds through the Makefile.
 ### Overview
 
 ```
-Commit → Lint & Test → Build Android → Build iOS → Deploy (Manual)
+Commit → Test & Lint → Build Android → Build iOS → Deploy (Manual)
+              ↓
+         PR/Feature Branch
 ```
 
-### Test & Lint Stage
+### Test & Lint Stage (Runs on all branches)
 
-- Runs on all branches and pull requests
-- Executes `dart analyze` for static analysis
-- Executes `flutter test` for unit and widget tests
-- Blocks further stages on failure
+- **Trigger**: Push to any branch or pull request
+- **Jobs**:
+  - `make install`: Install dependencies
+  - `make lint`: Dart analyze for static analysis
+  - `make test`: Unit and widget tests
+- **Success Criteria**: All tests pass, no lint errors
 
-### Build Stages
+### Build Android Stage (Runs on main/develop after tests pass)
 
-- **Android Build**: Generates release APK on main branch (after tests pass)
-- **iOS Build**: Generates IPA on main branch (after tests pass)
-- Builds only trigger after successful lint and test
+- **Trigger**: Push to main or develop (only if test stage succeeds)
+- **Runner**: Ubuntu (Linux)
+- **Jobs**:
+  - Setup Java 17 and Flutter
+  - Run `make bundle-android` (Release App Bundle)
+- **Artifacts**: `app-release.aab` (5-day retention)
+- **Success Criteria**: AAB builds without errors
+
+### Build iOS Stage (Runs on main/develop after tests pass)
+
+- **Trigger**: Push to main or develop (only if test stage succeeds)
+- **Runner**: macOS
+- **Jobs**:
+  - Setup Flutter
+  - Run `make build-ios` (Release IPA)
+  - Requires provisioning profiles and signing certs (configured via secrets)
+- **Artifacts**: `lamp.ipa` (5-day retention)
+- **Success Criteria**: IPA builds without errors
 
 ### Deployment
 
@@ -130,8 +150,10 @@ Commit → Lint & Test → Build Android → Build iOS → Deploy (Manual)
 
 ### GitHub Secrets Required
 
-- `SIGNING_KEY_ALIAS` - Android signing key alias
-- `SIGNING_KEY_PASSWORD` - Android signing key password
+- `KEYSTORE_BASE64` - Base64-encoded Android upload keystore
+- `STORE_PASSWORD` - Keystore password
+- `KEY_PASSWORD` - Key password
+- `KEY_ALIAS` - Key alias
 - `GOOGLE_PLAY_API_KEY` - Google Play Store API service account
 - `FASTLANE_USER` - Apple App Store user (when configured)
 - `FASTLANE_PASSWORD` - Apple App Store application-specific password
