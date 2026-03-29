@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../colors/color_controller.dart';
@@ -19,6 +20,8 @@ class _ColorLampScreenState extends State<ColorLampScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+
+  late Timer _animationTimer;
 
   @override
   void initState() {
@@ -42,7 +45,7 @@ class _ColorLampScreenState extends State<ColorLampScreen>
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
 
-    Future.delayed(const Duration(seconds: 2), () {
+    _animationTimer = Timer(const Duration(seconds: 2), () {
       if (mounted) {
         _animationController.forward();
       }
@@ -53,6 +56,7 @@ class _ColorLampScreenState extends State<ColorLampScreen>
   void dispose() {
     colorController.dispose();
     _animationController.dispose();
+    _animationTimer.cancel();
     super.dispose();
   }
 
@@ -68,10 +72,19 @@ class _ColorLampScreenState extends State<ColorLampScreen>
             colorController.nextColor();
           }
         },
+        onVerticalDragEnd: (details) {
+          final swipeUp = details.primaryVelocity! <
+              0; // Negative velocity means upward swipe
+          if (swipeUp) {
+            colorController.increaseBrightness();
+          } else {
+            colorController.decreaseBrightness();
+          }
+        },
         child: Stack(
           children: [
             // Full-screen color display
-            _ColorDisplay(color: colorController.currentColor),
+            _ColorDisplay(colorController: colorController),
 
             // Color chip selection bar
             _ColorChipBar(
@@ -96,15 +109,15 @@ class _ColorLampScreenState extends State<ColorLampScreen>
 /// Displays the full-screen color
 /// Uses AnimatedContainer for smooth color transitions
 class _ColorDisplay extends StatelessWidget {
-  final Color color;
+  final ColorController colorController;
 
-  const _ColorDisplay({required this.color});
+  const _ColorDisplay({required this.colorController});
 
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
       duration: AppSpacing.colorTransitionDuration,
-      color: color,
+      color: colorController.adjustedColor,
     );
   }
 }
@@ -257,7 +270,7 @@ class _HelperText extends StatelessWidget {
             color: Colors.black,
             child: const Center(
               child: Text(
-                'Swipe left or right',
+                'Swipe left/right to change color, up/down to adjust brightness',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white,
