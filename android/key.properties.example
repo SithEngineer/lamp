@@ -1,0 +1,4 @@
+storePassword=MySecretKeyStorePassword
+keyPassword=MySecretKeyStoreKeyAliasPassword
+keyAlias=MySecretKeyStoreKeyAlias
+storeFile=MySecretKeyStoreFileLocation
