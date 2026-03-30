@@ -92,21 +92,3 @@ install:
 screenshot:
 	@adb exec-out screencap -p > screenshot_$$(date +%Y%m%d_%H%M%S).png
 	@echo "Screenshot saved: screenshot_$$(date +%Y%m%d_%H%M%S).png"
-
-# CI/CD targets (for GitHub Actions and local CI runs)
-.PHONY: ci-setup ci-lint ci-test ci-build-android ci-build-ios
-
-ci-setup:
-	flutter pub get
-
-ci-lint:
-	dart analyze
-
-ci-test:
-	flutter test --coverage
-
-ci-build-android:
-	flutter build apk --release
-
-ci-build-ios:
-	flutter build ipa --release
