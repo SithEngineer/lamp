@@ -45,7 +45,7 @@ jobs:
     name: Build Android
     runs-on: ubuntu-latest
     needs: test-and-lint
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout code
@@ -74,8 +74,8 @@ jobs:
       - name: Create key.properties
         run: |
           echo "storePassword=${{ secrets.STORE_PASSWORD }}" > key.properties
-          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> key.properties
-          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> key.properties
+          echo "keyPassword=${{ secrets.KEYSTORE_PASS }}" >> key.properties
+          echo "keyAlias=${{ secrets.KEYSTORE_ALIAS }}" >> key.properties
           echo "storeFile=android/upload-keystore.jks" >> key.properties
 
       - name: Build AAB (App Bundle)
