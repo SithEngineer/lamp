@@ -1,3 +1,5 @@
+[![CI/CD Pipeline](https://github.com/SithEngineer/lamp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/SithEngineer/lamp/actions/workflows/ci.yml)
+
 # Lamp
 
 A Flutter mobile application that transforms your phone screen into a customizable lamp/light. Perfect as a bedside lamp or ambient light source.
@@ -152,8 +154,8 @@ Commit → Test & Lint → Build Android → Build iOS → Deploy (Manual)
 
 - `KEYSTORE_BASE64` - Base64-encoded Android upload keystore
 - `STORE_PASSWORD` - Keystore password
-- `KEY_PASSWORD` - Key password
-- `KEY_ALIAS` - Key alias
+- `KEYSTORE_PASS` - Key password
+- `KEYSTORE_ALIAS` - Key alias
 - `GOOGLE_PLAY_API_KEY` - Google Play Store API service account
 - `FASTLANE_USER` - Apple App Store user (when configured)
 - `FASTLANE_PASSWORD` - Apple App Store application-specific password
