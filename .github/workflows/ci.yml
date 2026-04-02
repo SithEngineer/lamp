@@ -65,18 +65,14 @@ jobs:
       - name: Install dependencies
         run: make install
 
-      - name: Decode keystore
+      - name: Setup signing
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > upload-keystore.jks
-          mkdir -p android
-          mv upload-keystore.jks android/
-
-      - name: Create key.properties
-        run: |
-          echo "storePassword=${{ secrets.STORE_PASSWORD }}" > android/key.properties
+          mkdir -p /tmp/signing
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > /tmp/signing/upload-keystore.jks
+          echo "storeFile=/tmp/signing/upload-keystore.jks" > android/key.properties
+          echo "storePassword=${{ secrets.STORE_PASSWORD }}" >> android/key.properties
           echo "keyPassword=${{ secrets.KEYSTORE_PASS }}" >> android/key.properties
           echo "keyAlias=${{ secrets.KEYSTORE_ALIAS }}" >> android/key.properties
-          echo "storeFile=android/upload-keystore.jks" >> android/key.properties
 
       - name: Build AAB (App Bundle)
         run: make bundle-android
@@ -93,7 +89,8 @@ jobs:
       - name: Clean up sensitive files
         if: always()
         run: |
-          rm -f android/key.properties android/upload-keystore.jks
+          rm -f android/key.properties
+          rm -rf /tmp/signing
 
   # Stage 3: Build iOS (requires macOS)
   build-ios:
