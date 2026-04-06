@@ -126,7 +126,7 @@ jobs:
   # Stage 4: Deploy to Play Store
   deploy-play-store:
     name: Deploy to Google Play Store
-    runs-on: ubuntu-latest
+    runs-on: macos-latest
     needs: build-android
     # See: https://docs.flutter.dev/deployment/android#deploy-to-the-play-store
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -149,10 +149,8 @@ jobs:
 
       - name: Deploy to Play Store (Production)
         run: |
-          # Install fastlane
-          gem install fastlane -NV
-           # Deploy to production track
-           fastlane supply --track production --release_status completed --json_key google-play-api-key.json --aab build/app/outputs/bundle/release/app-release.aab
+          # Deploy to production track
+          fastlane supply --track production --release_status completed --json_key google-play-api-key.json --aab build/app/outputs/bundle/release/app-release.aab
 
   # Stage 5: Deploy to App Store (Manual trigger only)
   deploy-app-store:
