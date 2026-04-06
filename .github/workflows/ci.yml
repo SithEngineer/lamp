@@ -179,11 +179,20 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: "zulu"
           java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Create Google Play service account key
+        run: |
+          mkdir -p /tmp/play-store
+          echo "${{ secrets.GOOGLE_PLAY_API_KEY }}" > /tmp/play-store/google-play-api-key.json
+          chmod 600 /tmp/play-store/google-play-api-key.json
 
       - name: Download AAB artifact
         uses: actions/download-artifact@v4
@@ -194,7 +203,11 @@ jobs:
       - name: Deploy to Play Store (Production)
         run: |
           # Deploy to production track
-          fastlane supply --track production --release_status completed --json_key google-play-api-key.json --aab build/app/outputs/bundle/release/app-release.aab
+          fastlane supply --track production --release_status completed --json_key /tmp/play-store/google-play-api-key.json --aab build/app/outputs/bundle/release/app-release.aab
+
+      - name: Clean up credentials
+        if: always()
+        run: rm -rf /tmp/play-store
 
   # Stage 5: Deploy to App Store (Manual trigger only)
   deploy-app-store:
