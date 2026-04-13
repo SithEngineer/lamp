@@ -202,6 +202,7 @@ jobs:
             --track production \
             --release_status completed \
             --json_key_data "$GOOGLE_PLAY_JSON_KEY" \
+            --package_name "com.github.sithengineer.lamp" \
             --aab build/app/outputs/bundle/release/app-release.aab
 
       - name: Clean up credentials
