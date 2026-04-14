@@ -92,3 +92,47 @@ install:
 screenshot:
 	@adb exec-out screencap -p > screenshot_$$(date +%Y%m%d_%H%M%S).png
 	@echo "Screenshot saved: screenshot_$$(date +%Y%m%d_%H%M%S).png"
+
+# Get the latest tag (fallback to v0.0.0 if no tags exist)
+CURRENT_VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
+
+# Strip 'v' prefix for calculation
+CURRENT_VERSION_NUM := $(subst v,,$(CURRENT_VERSION))
+
+# Auto-calculate patch increment
+MAJOR := $(shell echo $(CURRENT_VERSION_NUM) | cut -d. -f1)
+MINOR := $(shell echo $(CURRENT_VERSION_NUM) | cut -d. -f2)
+PATCH := $(shell echo $(CURRENT_VERSION_NUM) | cut -d. -f3)
+NEXT_PATCH := $(shell echo $$(($(PATCH) + 1)))
+SUGGESTED_VERSION := v$(MAJOR).$(MINOR).$(NEXT_PATCH)
+
+release:
+ifndef VERSION
+	@echo "Current version: $(CURRENT_VERSION)"
+	@echo "Suggested version: $(SUGGESTED_VERSION)"
+	@read -p "Enter new version (or press Enter for $(SUGGESTED_VERSION)): " input && \
+	if [ -z "$$input" ]; then \
+		$(MAKE) do-release VERSION=$(SUGGESTED_VERSION); \
+	else \
+		$(MAKE) do-release VERSION=$$input; \
+	fi
+else
+	@$(MAKE) do-release VERSION=$(VERSION)
+endif
+
+do-release:
+	@echo "Validating version $(VERSION)..."
+	$(eval NEW_VERSION := $(shell echo $(VERSION) | sed 's/^v//'))
+	$(eval NEW_TAG := v$(NEW_VERSION))
+	@if [ "$(CURRENT_VERSION)" = "$(NEW_TAG)" ]; then \
+		echo "Error: Version $(NEW_TAG) already exists!"; \
+		exit 1; \
+	fi
+	@if [ "$(NEW_TAG)" \< "$(CURRENT_VERSION)" ]; then \
+		echo "Error: $(NEW_TAG) is older than current $(CURRENT_VERSION)!"; \
+		exit 1; \
+	fi
+	@echo "Creating tag $(NEW_TAG)..."
+	git tag $(NEW_TAG)
+	git push origin $(NEW_TAG)
+	@echo "Released $(NEW_TAG)! CI/CD will deploy automatically."
