@@ -1,4 +1,4 @@
-.PHONY: help install lint format test test-watch coverage build-debug build-release build-android build-ios run run-release clean analyze screenshot
+.PHONY: help install lint format test test-watch coverage build-debug build-release build-android build-ios run run-release clean analyze screenshot release
 
 help:
 	@echo "Lamp - Flutter Mobile App Development Commands"
@@ -26,6 +26,12 @@ help:
 	@echo "  make build-release    - Build release APK (Android)"
 	@echo "  make build-android    - Alias for build-release (Android APK)"
 	@echo "  make build-ios        - Build iOS archive (IPA)"
+	@echo ""
+	@echo "Release:"
+	@echo "  make release          - Increment build number (1.0.0+1 -> 1.0.0+2)"
+	@echo "  make release TYPE=patch  - Increment patch (1.0.0+1 -> 1.0.1+1)"
+	@echo "  make release TYPE=minor  - Increment minor (1.0.0+1 -> 1.1.0+1)"
+	@echo "  make release TYPE=major  - Increment major (1.0.0+1 -> 2.0.0+1)"
 	@echo ""
 	@echo "Icons & Assets:"
 	@echo "  make gen-icons        - Regenerate app launcher icons"
@@ -93,46 +99,76 @@ screenshot:
 	@adb exec-out screencap -p > screenshot_$$(date +%Y%m%d_%H%M%S).png
 	@echo "Screenshot saved: screenshot_$$(date +%Y%m%d_%H%M%S).png"
 
-# Get the latest tag (fallback to v0.0.0 if no tags exist)
-CURRENT_VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-
-# Strip 'v' prefix for calculation
-CURRENT_VERSION_NUM := $(subst v,,$(CURRENT_VERSION))
-
-# Auto-calculate patch increment
-MAJOR := $(shell echo $(CURRENT_VERSION_NUM) | cut -d. -f1)
-MINOR := $(shell echo $(CURRENT_VERSION_NUM) | cut -d. -f2)
-PATCH := $(shell echo $(CURRENT_VERSION_NUM) | cut -d. -f3)
-NEXT_PATCH := $(shell echo $$(($(PATCH) + 1)))
-SUGGESTED_VERSION := v$(MAJOR).$(MINOR).$(NEXT_PATCH)
+# Release command with TYPE support (release, patch, minor, major)
+# Default TYPE=release increments build number only
+TYPE ?= release
 
 release:
-ifndef VERSION
-	@echo "Current version: $(CURRENT_VERSION)"
-	@echo "Suggested version: $(SUGGESTED_VERSION)"
-	@read -p "Enter new version (or press Enter for $(SUGGESTED_VERSION)): " input && \
-	if [ -z "$$input" ]; then \
-		$(MAKE) do-release VERSION=$(SUGGESTED_VERSION); \
+	@echo "Checking prerequisites..."
+	@# Check if on main branch
+	@CURRENT_BRANCH=$$(git rev-parse --abbrev-ref HEAD); \
+	if [ "$$CURRENT_BRANCH" != "main" ]; then \
+		echo "Error: Must be on main branch. Current branch: $$CURRENT_BRANCH"; \
+		exit 1; \
+	fi
+	@# Check if working directory is dirty (excluding pubspec.yaml which we'll modify)
+	@git diff --quiet -- . ':(exclude)pubspec.yaml'; \
+	if [ $$? -ne 0 ]; then \
+		echo "Error: Working directory has uncommitted changes (excluding pubspec.yaml)."; \
+		echo "Please commit or stash changes before releasing."; \
+		git status --short; \
+		exit 1; \
+	fi
+	@# Read current version from pubspec.yaml
+	@CURRENT_VERSION=$$(grep "^version: " pubspec.yaml | sed 's/version: //'); \
+	echo "Current version: $$CURRENT_VERSION"; \
+	\
+	# Parse version components (format: major.minor.patch+build)\n	MAJOR=$$(echo $$CURRENT_VERSION | cut -d. -f1); \
+	MINOR=$$(echo $$CURRENT_VERSION | cut -d. -f2); \
+	PATCH_BUILD=$$(echo $$CURRENT_VERSION | cut -d. -f3); \
+	PATCH=$$(echo $$PATCH_BUILD | cut -d+ -f1); \
+	BUILD=$$(echo $$PATCH_BUILD | cut -d+ -f2); \
+	\
+	# Calculate new version based on TYPE\n	if [ "$(TYPE)" = "release" ]; then \
+		NEW_BUILD=$$((BUILD + 1)); \
+		NEW_VERSION="$$MAJOR.$$MINOR.$$PATCH+$$NEW_BUILD"; \
+		echo "Incrementing build number: $$CURRENT_VERSION -> $$NEW_VERSION"; \
+	elif [ "$(TYPE)" = "patch" ]; then \
+		NEW_PATCH=$$((PATCH + 1)); \
+		NEW_VERSION="$$MAJOR.$$MINOR.$$NEW_PATCH+1"; \
+		echo "Incrementing patch version: $$CURRENT_VERSION -> $$NEW_VERSION"; \
+	elif [ "$(TYPE)" = "minor" ]; then \
+		NEW_MINOR=$$((MINOR + 1)); \
+		NEW_VERSION="$$MAJOR.$$NEW_MINOR.0+1"; \
+		echo "Incrementing minor version: $$CURRENT_VERSION -> $$NEW_VERSION"; \
+	elif [ "$(TYPE)" = "major" ]; then \
+		NEW_MAJOR=$$((MAJOR + 1)); \
+		NEW_VERSION="$$NEW_MAJOR.0.0+1"; \
+		echo "Incrementing major version: $$CURRENT_VERSION -> $$NEW_VERSION"; \
 	else \
-		$(MAKE) do-release VERSION=$$input; \
-	fi
-else
-	@$(MAKE) do-release VERSION=$(VERSION)
-endif
-
-do-release:
-	@echo "Validating version $(VERSION)..."
-	$(eval NEW_VERSION := $(shell echo $(VERSION) | sed 's/^v//'))
-	$(eval NEW_TAG := v$(NEW_VERSION))
-	@if [ "$(CURRENT_VERSION)" = "$(NEW_TAG)" ]; then \
-		echo "Error: Version $(NEW_TAG) already exists!"; \
+		echo "Error: Unknown TYPE '$(TYPE)'. Use: release, patch, minor, or major"; \
 		exit 1; \
-	fi
-	@if [ "$(NEW_TAG)" \< "$(CURRENT_VERSION)" ]; then \
-		echo "Error: $(NEW_TAG) is older than current $(CURRENT_VERSION)!"; \
+	fi; \
+	\
+	# Update pubspec.yaml\n	sed -i.bak "s/^version: .*/version: $$NEW_VERSION/" pubspec.yaml; \
+	rm -f pubspec.yaml.bak; \
+	\
+	# Show confirmation prompt\n	echo ""; \
+	read -p "Proceed with release v$$NEW_VERSION? (y/N): " CONFIRM; \
+	if [ "$$CONFIRM" != "y" ] && [ "$$CONFIRM" != "Y" ]; then \
+		echo "Aborted. Reverting pubspec.yaml..."; \
+		git checkout pubspec.yaml; \
 		exit 1; \
-	fi
-	@echo "Creating tag $(NEW_TAG)..."
-	git tag $(NEW_TAG)
-	git push origin $(NEW_TAG)
-	@echo "Released $(NEW_TAG)! CI/CD will deploy automatically."
+	fi; \
+	\
+	# Commit changes\n	git add pubspec.yaml; \
+	git commit -m "Release v$$NEW_VERSION"; \
+	\
+	# Create annotated tag\n	git tag -a "v$$NEW_VERSION" -m "Release v$$NEW_VERSION"; \
+	\
+	# Push to origin\n	git push origin main; \
+	git push origin "v$$NEW_VERSION"; \
+	\
+	echo ""; \
+	echo "✓ Released v$$NEW_VERSION"; \
+	echo "✓ CI/CD will deploy automatically"
