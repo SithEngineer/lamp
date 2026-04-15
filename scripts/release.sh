@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Release script for Lamp Flutter app
+# Creates a release branch, updates version, and opens a PR
 # Usage: ./scripts/release.sh [TYPE]
 # TYPE can be: release (default), patch, minor, major
 
@@ -17,9 +18,9 @@ if [ "$CURRENT_BRANCH" != "main" ]; then
     exit 1
 fi
 
-# Check if working directory is dirty (excluding pubspec.yaml which we'll modify)
-if ! git diff --quiet -- . ':(exclude)pubspec.yaml'; then
-    echo "Error: Working directory has uncommitted changes (excluding pubspec.yaml)."
+# Check if working directory is dirty
+if ! git diff --quiet; then
+    echo "Error: Working directory has uncommitted changes."
     echo "Please commit or stash changes before releasing."
     git status --short
     exit 1
@@ -64,30 +65,54 @@ case "$TYPE" in
         ;;
 esac
 
+# Show confirmation prompt
+echo ""
+read -p "Create release branch for v$NEW_VERSION? (y/N): " CONFIRM
+if [ "$CONFIRM" != "y" ] && [ "$CONFIRM" != "Y" ]; then
+    echo "Aborted."
+    exit 1
+fi
+
+# Create release branch
+BRANCH_NAME="release/v$NEW_VERSION"
+echo "Creating branch: $BRANCH_NAME"
+git checkout -b "$BRANCH_NAME"
+
 # Update pubspec.yaml
 sed -i.bak "s/^version: .*/version: $NEW_VERSION/" pubspec.yaml
 rm -f pubspec.yaml.bak
-
-# Show confirmation prompt
-echo ""
-read -p "Proceed with release v$NEW_VERSION? (y/N): " CONFIRM
-if [ "$CONFIRM" != "y" ] && [ "$CONFIRM" != "Y" ]; then
-    echo "Aborted. Reverting pubspec.yaml..."
-    git checkout pubspec.yaml
-    exit 1
-fi
 
 # Commit changes
 git add pubspec.yaml
 git commit -m "Release v$NEW_VERSION"
 
-# Create annotated tag
-git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
+# Push branch
+echo "Pushing branch to origin..."
+git push origin "$BRANCH_NAME"
 
-# Push to origin
-git push origin main
-git push origin "v$NEW_VERSION"
+# Create PR using gh CLI
+echo "Creating pull request..."
+gh pr create \
+    --title "Release v$NEW_VERSION" \
+    --body "Automated release PR for version $NEW_VERSION.
+
+This PR updates the pubspec.yaml version.
+
+**Next steps:**
+1. Review and merge this PR
+2. A tag will be automatically created upon merge
+3. CI/CD will deploy the release" \
+    --base main \
+    --head "$BRANCH_NAME"
 
 echo ""
-echo "✓ Released v$NEW_VERSION"
-echo "✓ CI/CD will deploy automatically"
+echo "✓ Release branch created: $BRANCH_NAME"
+echo "✓ Pull request opened"
+echo ""
+echo "Next steps:"
+echo "1. Review the PR on GitHub"
+echo "2. Merge the PR"
+echo "3. Tag and deployment will happen automatically"
+
+# Switch back to main
+git checkout main
