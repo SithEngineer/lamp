@@ -108,6 +108,20 @@ jobs:
           distribution: "zulu"
           java-version: ${{ env.JAVA_VERSION }}
 
+      - name: Extract version from tag
+        id: version
+        run: |
+          # Extract version from tag (v1.0.0+2 -> 1.0.0+2)
+          FULL_VERSION=${GITHUB_REF#refs/tags/v}
+          echo "version=$FULL_VERSION" >> $GITHUB_OUTPUT
+          echo "Building version $FULL_VERSION"
+
+      - name: Update pubspec.yaml with tag version
+        run: |
+          # Ensure pubspec.yaml version matches the tag
+          sed -i "s/^version: .*/version: ${{ steps.version.outputs.version }}/" pubspec.yaml
+          cat pubspec.yaml | grep "^version:"
+
       - name: Install dependencies
         run: make install
 
