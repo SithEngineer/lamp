@@ -90,6 +90,7 @@ make build-debug       # Build debug APK
 make build-release     # Build release APK
 make build-android     # Build release APK (alias)
 make build-ios         # Build iOS archive
+make tag VERSION=x.y.z BUILD=n  # Create and push release tag
 make gen-icons         # Regenerate app icons
 make clean             # Clean build artifacts
 ```
@@ -109,56 +110,72 @@ The linting step runs automatically before builds through the Makefile.
 ### Overview
 
 ```
-Commit → Test & Lint → Build Android → Build iOS → Deploy (Manual)
-              ↓
-         PR/Feature Branch
+Branch Commit:  Push → Test & Lint → Build (Debug)
+Tag Push:       Push tag → Build (Release) → GitHub Release → Play Store Deploy
 ```
 
-### Test & Lint Stage (Runs on all branches)
+### CI Workflow (`.github/workflows/ci.yml`)
 
-- **Trigger**: Push to any branch or pull request
-- **Jobs**:
-  - `make install`: Install dependencies
-  - `make lint`: Dart analyze for static analysis
-  - `make test`: Unit and widget tests
-- **Success Criteria**: All tests pass, no lint errors
+Runs on every push to `main` or `develop`, and on pull requests.
 
-### Build Android Stage (Runs on main/develop after tests pass)
+**Jobs:**
+1. `test-and-lint` - Installs deps, runs `make lint`, runs `make test`
+2. `build-debug` - Builds debug APK (verification only)
 
-- **Trigger**: Push to main or develop (only if test stage succeeds)
-- **Runner**: Ubuntu (Linux)
-- **Jobs**:
-  - Setup Java 17 and Flutter
-  - Run `make bundle-android` (Release App Bundle)
-- **Artifacts**: `app-release.aab` (5-day retention)
-- **Success Criteria**: AAB builds without errors
+**Success Criteria:** All tests pass, no lint errors, debug APK builds successfully
 
-### Build iOS Stage (Runs on main/develop after tests pass)
+### Release Workflow (`.github/workflows/release.yml`)
 
-- **Trigger**: Push to main or develop (only if test stage succeeds)
-- **Runner**: macOS
-- **Jobs**:
-  - Setup Flutter
-  - Run `make build-ios` (Release IPA)
-  - Requires provisioning profiles and signing certs (configured via secrets)
-- **Artifacts**: `lamp.ipa` (5-day retention)
-- **Success Criteria**: IPA builds without errors
+Runs when a tag matching `v*.*.*` is pushed. Also supports manual retry via `workflow_dispatch`.
 
-### Deployment
+**Jobs:**
+1. `build-android` - Builds release AAB + APKs, uploads artifacts
+2. `release-github` - Creates GitHub release with APK artifacts (`allowUpdates: true` for retries)
+3. `deploy-play-store` - Uploads AAB to Google Play Store (production track)
+4. `build-ios` - Disabled until iOS signing is configured
+5. `deploy-app-store` - Disabled until iOS signing is configured
 
-- Manual trigger via GitHub Actions UI
-- Requires signing certificates and API keys (configured in GitHub Secrets)
-- Supports Google Play Store and Apple App Store
+**Success Criteria:** AAB builds, APKs attach to GitHub release, Play Store deployment succeeds
+
+### Creating a Release
+
+```bash
+# Update pubspec.yaml, commit, create tag, and push
+make tag VERSION=1.0.0 BUILD=5
+```
+
+This will:
+1. Update `pubspec.yaml` to `version: 1.0.0+5`
+2. Commit the change
+3. Create tag `v1.0.0+5`
+4. Push to origin (triggers Release workflow)
+
+### Retrying a Failed Release
+
+If a tag build fails:
+
+1. **Via GitHub Actions UI:**
+   - Go to Actions → Release workflow
+   - Click on the failed run
+   - Click "Re-run all jobs"
+
+2. **Via workflow_dispatch (if artifacts were uploaded):**
+   - Go to Actions → Release workflow
+   - Click "Run workflow"
+   - Enter the tag name (e.g., `v1.0.0+4`)
+   - Click "Run workflow"
+
+The GitHub release will be updated with new artifacts (`allowUpdates: true`).
 
 ### GitHub Secrets Required
 
-- `KEYSTORE_BASE64` - Base64-encoded Android upload keystore
-- `STORE_PASSWORD` - Keystore password
-- `KEYSTORE_PASS` - Key password
-- `KEYSTORE_ALIAS` - Key alias
-- `GOOGLE_PLAY_API_KEY` - Google Play Store API service account
-- `FASTLANE_USER` - Apple App Store user (when configured)
-- `FASTLANE_PASSWORD` - Apple App Store application-specific password
+| Secret | Purpose |
+|--------|---------|
+| `KEYSTORE_BASE64` | Base64-encoded Android upload keystore |
+| `STORE_PASSWORD` | Keystore store password |
+| `KEYSTORE_PASS` | Key password |
+| `KEYSTORE_ALIAS` | Key alias |
+| `GOOGLE_PLAY_JSON_KEY` | Google Play Store API service account JSON |
 
 ## Project Standards
 

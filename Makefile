@@ -1,4 +1,4 @@
-.PHONY: help install lint format test test-watch coverage build-debug build-release build-android build-ios run run-release clean analyze screenshot release
+.PHONY: help install lint format test test-watch coverage build-debug build-release build-android build-ios run run-release clean analyze screenshot tag
 
 help:
 	@echo "Lamp - Flutter Mobile App Development Commands"
@@ -28,10 +28,7 @@ help:
 	@echo "  make build-ios        - Build iOS archive (IPA)"
 	@echo ""
 	@echo "Release:"
-	@echo "  make release          - Increment build number (1.0.0+1 -> 1.0.0+2)"
-	@echo "  make release TYPE=patch  - Increment patch (1.0.0+1 -> 1.0.1+1)"
-	@echo "  make release TYPE=minor  - Increment minor (1.0.0+1 -> 1.1.0+1)"
-	@echo "  make release TYPE=major  - Increment major (1.0.0+1 -> 2.0.0+1)"
+	@echo "  make tag VERSION=x.y.z BUILD=n  - Create and push tag vX.Y.Z+n"
 	@echo ""
 	@echo "Icons & Assets:"
 	@echo "  make gen-icons        - Regenerate app launcher icons"
@@ -99,9 +96,21 @@ screenshot:
 	@adb exec-out screencap -p > screenshot_$$(date +%Y%m%d_%H%M%S).png
 	@echo "Screenshot saved: screenshot_$$(date +%Y%m%d_%H%M%S).png"
 
-# Release command with TYPE support (release, patch, minor, major)
-# Default TYPE=release increments build number only
-TYPE ?= release
-
-release:
-	@./scripts/release.sh $(TYPE)
+tag:
+	@if [ -z "$(VERSION)" ]; then \
+		echo "Error: VERSION is required. Usage: make tag VERSION=1.0.0 BUILD=5"; \
+		exit 1; \
+	fi
+	@if [ -z "$(BUILD)" ]; then \
+		echo "Error: BUILD is required. Usage: make tag VERSION=1.0.0 BUILD=5"; \
+		exit 1; \
+	fi
+	@echo "Creating tag v$(VERSION)+$(BUILD)"
+	@echo "Current version:" && grep "^version:" pubspec.yaml
+	@sed -i '' "s/^version: .*/version: $(VERSION)+$(BUILD)/" pubspec.yaml
+	@echo "Updated version:" && grep "^version:" pubspec.yaml
+	@git add pubspec.yaml
+	@git commit -m "Release v$(VERSION)+$(BUILD)"
+	@git tag "v$(VERSION)+$(BUILD)"
+	@echo "Pushing tag to origin..."
+	@git push origin main --tags
